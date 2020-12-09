@@ -1,0 +1,72 @@
+---
+title: "ANLY503 HW7 Wenhao Jiang"
+author: "Wenhao Jiang"
+date: "2020/11/5"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,warning=F}
+library(tidyr)
+library(dplyr)
+library(readxl)
+library(igraph)
+library(tidygraph)
+library(RColorBrewer)
+```
+
+## Read in data and clean
+```{r}
+df = read_excel('State_to_State_Migrations_Table_2018.xls',range = cell_limits(c(7, 1), c(NA, NA)))
+df = df[-c(72:80),] %>% 
+  drop_na() %>% 
+  rename(target=...1) %>% 
+  select(-contains('...'))
+df = df[-c(1),]
+df %>% head()
+```
+## Put data into three columns, then choose the orgins
+```{r}
+clean_df = df %>%
+  gather(key='source',value='count',Alabama:`Foreign Country`) 
+
+clean_df = clean_df[!(clean_df$count == 'N/A'),] %>%
+  mutate(count = as.integer(count))
+
+ny = clean_df %>% filter(source=='New York')
+ny = ny[order(ny$count,decreasing = T),][1:10,]
+
+ta = clean_df %>% filter(source=='Texas')
+ta = ta[order(ta$count,decreasing = T),][1:10,]
+
+va = clean_df %>% filter(source=='Virginia')
+va = va[order(va$count,decreasing = T),][1:10,]
+
+wi = clean_df %>% filter(source=='Wisconsin')
+wi = wi[order(wi$count,decreasing = T),][1:10,]
+```
+
+```{r}
+im_data = rbind(ny,ta,va,wi)
+im_data %>% head()
+```
+
+## Plotting
+```{r,warning=F}
+g1 = graph_from_data_frame(d=im_data)
+V(g1)$size = 10
+V(g1)$label.cex = 0.8
+V(g1)$label.color = 'black'
+V(g1)$frame.color = 'white'
+V(g1)$color = brewer.pal(n=8,name = "Set2")
+E(g1)$arrow.size <- 0.1
+E(g1)$width = E(g1)$count/mean(im_data$count)*2
+E(g1)$curved = 0.2
+E(g1)$color = 'lightsteelblue1'
+plot(g1,layout=layout.circle, main='Top10 Immigration to New York, Texas, Wisconsin and Virginia')
+```
+
+

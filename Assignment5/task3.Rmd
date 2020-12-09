@@ -1,0 +1,37 @@
+---
+title: "ANLY503 HW5 Wenhao Jiang"
+author: "Wenhao Jiang"
+date: "2020/10/23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+trc = read.csv('data/transactions.csv')
+acc = read.csv('data/accounts_analytical.csv')
+```
+
+# Default with time of creating loan and opening account, separately
+```{r}
+acc %>% subset(!is.na(loan_default)) %>%
+  ggplot(aes(x=as.Date(acct_creation_date), y=as.Date(loan_date), color=loan_default)) +
+  geom_point() +
+  facet_grid(~loan_default) +
+  labs(x='account opening time',y='loan creation time')
+```
+
+# Default with time of creating loan and opening account in one graph
+```{r}
+acc %>% subset(!is.na(loan_default)) %>%
+  ggplot(aes(x=as.Date(acct_creation_date), y=as.Date(loan_date), color=loan_default)) +
+  geom_point() +
+  labs(x='account opening time',y='loan creation time')
+```
+
+There is no obvious relationship between a good or bad loan and the time between an account is opened an the loan is created

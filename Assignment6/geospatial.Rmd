@@ -1,0 +1,180 @@
+---
+title: "ANLY503 Assignment6 Wenhao Jiang"
+author: "Wenhao Jiang"
+date: "2020/11/4"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(reticulate)
+use_condaenv('r-reticulate',required = T)
+py_install('xlrd')
+```
+
+# Data Extraction
+## Python codes
+### election data
+```{python}
+import pandas as pd
+from pandas import DataFrame
+```
+
+```{python}
+path = 'data/'
+vote = pd.read_csv(path + 'countypres_2000-2016.csv')
+```
+
+```{python}
+vote2 = vote.groupby(by=['year','county','party','candidate'],dropna=True).apply(lambda x: x['candidatevotes']/x['totalvotes']).reset_index()
+
+vote3 = vote2.drop(columns=['level_4']).rename(columns={0:'vote'}).drop(vote2[vote2['year']<2008].index).reset_index(drop=True)
+```
+
+```{python}
+vote3.groupby(by=['year','county','party','candidate']).sum().head(5)
+```
+### unemployment rate
+```{python}
+ue = pd.read_excel(path + 'Unemployment.xls', header=7)
+ue2 = ue[['area_name','Unemployment_rate_2008','Unemployment_rate_2012','Unemployment_rate_2016']]
+```
+
+```{python}
+ue2.head(5)
+```
+
+
+
+## R codes
+```{r,warning=F}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(spData)
+library(sf)
+library(maps)
+library(broom)
+library(readxl)
+library(gridExtra)
+```
+
+```{r}
+vote = read.csv('data/countypres_2000-2016.csv')
+ue = read_excel('data/Unemployment.xls',range = cell_limits(c(8, 1), c(NA, NA)))
+```
+
+### election data
+```{r}
+vote_data = vote %>%
+  filter(year > 2007) %>%
+  filter(party == 'democrat') %>%
+  mutate(proportion_of_vote = candidatevotes/totalvotes)
+
+vote_data$FIPS = formatC(vote_data$FIPS,width = 5,format='d',flag = '0')
+vote_data %>% head()
+```
+
+### unemployment rate
+```{r}
+ue_data = ue %>% 
+  select(FIPStxt,Unemployment_rate_2008,Unemployment_rate_2012,Unemployment_rate_2016) %>% 
+  rename(FIPS=FIPStxt,
+         '2008'=Unemployment_rate_2008,
+         '2012'=Unemployment_rate_2012,
+         '2016'=Unemployment_rate_2016) %>%
+  gather(key='year', value='Unemployment_rate','2008':'2016') %>%
+  mutate(year = as.integer(year))
+ue_data %>% head()
+
+```
+
+```{r}
+vote_data = left_join(vote_data,ue_data)
+```
+
+# Choropleth
+## plotting
+```{r}
+states = map_data('county')
+```
+
+```{r}
+vote_data$subregion = tolower(vote_data$county)
+d2 = left_join(states,vote_data) %>% 
+  filter(region == "texas" | region == "california" | region == "pennsylvania")
+```
+
+```{r}
+v.ta = ggplot(d2 %>% filter(region=='texas'),
+       mapping = aes(x = long, y = lat,
+                          group = group)) + 
+  geom_polygon(aes(fill = proportion_of_vote)) + 
+  facet_wrap(~year, scales = "free") +
+  ggtitle('Election results Texas')
+
+u.ta = ggplot(d2 %>% filter(region=='texas'),
+       mapping = aes(x = long, y = lat,
+                          group = group)) + 
+  geom_polygon(aes(fill = Unemployment_rate))+ 
+  facet_wrap(~year, scales = "free") +
+  ggtitle('Emunployment rate Texas')
+
+grid.arrange(v.ta,u.ta, ncol=1)
+```
+
+```{r}
+v.ca = ggplot(d2 %>% filter(region=='california'),
+       mapping = aes(x = long, y = lat,
+                          group = group)) + 
+  geom_polygon(aes(fill = proportion_of_vote)) + 
+  facet_wrap(~year, scales = "free") +
+  ggtitle('Election results California')
+
+u.ca = ggplot(d2 %>% filter(region=='california'),
+       mapping = aes(x = long, y = lat,
+                          group = group)) + 
+  geom_polygon(aes(fill = Unemployment_rate))+ 
+  facet_wrap(~year, scales = "free") +
+  ggtitle('Emunployment rate California')
+
+grid.arrange(v.ca, u.ca, ncol=1)
+```
+
+
+```{r}
+v.pa = ggplot(d2 %>% filter(region=='pennsylvania'),
+       mapping = aes(x = long, y = lat,
+                          group = group)) + 
+  geom_polygon(aes(fill = proportion_of_vote)) + 
+  facet_wrap(~year, scales = "free") +
+  ggtitle('Election results Pennsylvania')
+
+u.pa = ggplot(d2 %>% filter(region=='pennsylvania'),
+       mapping = aes(x = long, y = lat,
+                          group = group)) + 
+  geom_polygon(aes(fill = Unemployment_rate))+ 
+  facet_wrap(~year, scales = "free") +
+  ggtitle('Emunployment rate Pennsylvania')
+
+grid.arrange(v.pa, u.pa, ncol=1)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

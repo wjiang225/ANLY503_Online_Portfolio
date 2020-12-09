@@ -1,0 +1,52 @@
+---
+title: "ANLY503 HW5 Wenhao Jiang"
+author: "Wenhao Jiang"
+date: "2020/10/23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+trc = read.csv('data/transactions.csv')
+acc = read.csv('data/accounts_analytical.csv')
+```
+
+```{r}
+most_freq = tail(names(sort(table(trc$account_id))),1)
+most = trc[trc$account_id==most_freq,]
+```
+
+
+# Transaction of account 8261 with different type
+```{r}
+most %>% 
+  ggplot(aes(x=as.Date(date),y=amount,color=type)) +
+  geom_line() +
+  facet_wrap(~type,ncol=1,strip.position = "left") +
+  labs(x='Time')
+```
+
+# Transaction of account 8261 with different method
+```{r}
+most[!most$method=='',] %>% 
+  ggplot(aes(x=as.Date(date),y=amount,color=method)) +
+  geom_line() +
+  facet_wrap(~method,ncol=1,strip.position = "left")
+```
+
+# Transaction of account 8261 with different category
+```{r}
+most[!most$category=='',] %>%
+  ggplot(aes(x=as.Date(date),y=amount,color=category)) +
+  geom_line() 
+```
+
+
+
+

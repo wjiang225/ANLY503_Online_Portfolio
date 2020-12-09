@@ -1,0 +1,258 @@
+---
+title: "ANLY503 Final Project: Tornado study 1950-2018"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(dplyr)
+library(tidyr)
+library(maps)
+library(ggplot2)
+library(gganimate)
+library(igraph)
+library(RColorBrewer)
+```
+
+About
+===================================== 
+Data Source: https://www.spc.noaa.gov/wcm/
+
+This project is aimed to analyze the distribution of tornado occurrence in the US.
+By several visualizations, this project would explore details of all tornadoes across the US from 1950 to 2018.
+
+Packages used in this project include:
+
+flexdashboard
+
+dplyr
+
+tidyr
+
+maps
+
+ggplot2
+
+gganimate
+
+igraph
+
+RColorBrewer
+
+
+Visualizations
+===================================== 
+Row {data-height=600}
+-----------------------------------------------------------------------
+### As shown in the choropleth, states in the mid-south are affected by tornadoes more than the others.Texas has the most tornado occurrence in all times
+
+
+```{r}
+df = read.csv('data/1950-2018_all_tornadoes.csv')
+df = na.omit(df)
+
+#two functions that transform abbreviations into full names
+abbr2state = function(abbr){
+  ab    = tolower(c("AL",
+             "AK", "AZ", "KS", "UT", "CO", "CT",
+             "DE", "FL", "GA", "HI", "ID", "IL",
+             "IN", "IA", "AR", "KY", "LA", "ME",
+             "MD", "MA", "MI", "MN", "MS", "MO",
+             "MT", "NE", "NV", "NH", "NJ", "NM",
+             "NY", "NC", "ND", "OH", "OK", "OR",
+             "PA", "RI", "SC", "SD", "TN", "TX",
+             "CA", "VT", "VA", "WA", "WV", "WI",
+             "WY", "DC"))
+  st    = c("Alabama",
+             "Alaska", "Arizona", "Kansas",
+             "Utah", "Colorado", "Connecticut",
+             "Delaware", "Florida", "Georgia",
+             "Hawaii", "Idaho", "Illinois",
+             "Indiana", "Iowa", "Arkansas",
+             "Kentucky", "Louisiana", "Maine",
+             "Maryland", "Massachusetts", "Michigan",
+             "Minnesota", "Mississippi", "Missouri",
+             "Montana", "Nebraska", "Nevada",
+             "New Hampshire", "New Jersey", "New Mexico",
+             "New York", "North Carolina", "North Dakota",
+             "Ohio", "Oklahoma", "Oregon",
+             "Pennsylvania", "Rhode Island", "South Carolina",
+             "South Dakota", "Tennessee", "Texas",
+             "California", "Vermont", "Virginia",
+             "Washington", "West Virginia", "Wisconsin",
+             "Wyoming", "District of Columbia")
+  st[match(tolower(abbr), ab)]
+}
+
+int2month = function(input){
+  int = c(1,2,3,4,5,6,7,8,9,10,11,12)
+  month = c('January','February','March','April','May','June','July','August','September','October','November','December')
+  
+  month[match(input,int)]
+}
+
+#transform state and month abbr into full names
+df = df %>% mutate(st = tolower(abbr2state(st)))
+df = na.omit(df)
+df = df %>% mutate(mo = int2month(mo))
+
+#Geospatial data for choropleth
+df$region = df$st
+states = map_data('state')
+
+#Count tornadoes by year and state
+d2 = count(df,yr,region)
+
+#Get all state names and year
+all_st = unique(d2$region)
+all_yr = unique(d2$yr)
+
+#Fill in 0 for those states that had no tornado in that year
+for(i in all_yr){
+  cell = d2[d2$yr==i,]
+  diff = setdiff(all_st,unique(cell$region))
+  for(x in diff){
+    d2 = rbind(d2, data.frame(yr=i,region=x,n=0))
+  }
+}
+
+#Prepare data for choropleth
+d3 = left_join(states,d2)
+
+#Plot choropleth with animation
+#This could take a while to run
+g1 = ggplot(d3,
+       mapping = aes(x = long, y = lat,
+                    group = group)) + 
+  geom_polygon(aes(fill = n)) +
+  theme_void() +
+  labs(title = 'Number of Tornadoes across the US in Year: {frame_time}',fill = 'number of tornadoes') +
+  transition_time(yr)
+
+ani_g1 = animate(g1,fps = 1, height = 375, width = 600)
+ani_g1
+```
+
+### Tornadoes that originate in Oklahoma, Texas, Alabama, Kansas, and Mississippi are more likely to affect neighbor states
+
+
+```{r}
+#Find tornadoes that also travel to other states
+two_st_t = df[df$ns == 2,]
+
+#Get the index for those tornadoes
+two_om = unique(two_st_t$om)
+
+#Create new dataframe for source-target network data
+network = data.frame(target=character(),source=character())
+
+for(om in two_om){
+  cell = two_st_t[two_st_t$om==om,]
+  source = cell[1,]$st
+  target = cell[nrow(cell),]$st
+  network = rbind(network,data.frame(source=source,target=target))
+}
+network = network %>% filter(source != target)
+
+#Find top 5 states that have tornadoes traveling to other states
+source = count(network,source)
+source = source[order(-source$n),]
+src_5 = head(source,5)
+
+#Count occurance and get the state names
+all_counts = count(network,source,target)
+top5 = all_counts %>% filter(source %in% src_5$source)
+
+#Plot network
+net1 = graph_from_data_frame(d=top5)
+V(net1)$size = 10
+V(net1)$label.cex = 0.8
+V(net1)$label.color = 'black'
+V(net1)$frame.color = 'white'
+V(net1)$color = brewer.pal(n=8,name = "Set2")
+E(net1)$arrow.size = 0.1
+E(net1)$width = E(net1)$n/2.5
+E(net1)$curved = 0.2
+E(net1)$color = 'lightsteelblue1'
+plot(net1,layout=layout.circle, 
+     main='Top5 tornado origins that affects other states',
+     sub=paste('top5 origins:',paste(src_5$source,collapse = ',')))
+```
+
+
+Row {data-height=400}
+-----------------------------------------------------------------------
+
+### From this bar chart, it shows that tornadoes occurs mostly in spring times, in April, May, and June
+
+
+```{r}
+#Plot a bar chart showing tornado numbers in each month, with animation on year
+mo = count(df,yr,mo) %>% ggplot(aes(x= reorder(mo,-n), y=n, fill = mo)) +
+  geom_bar(stat='identity') +
+  geom_text(aes(label = n), vjust=-0.2) +
+  labs(x = 'month', y = 'number of tornadoes', fill = 'month', title = 'Number of Tornadoes in each Month in Year: {frame_time}') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45)) +
+  transition_time(yr) +
+  ease_aes('linear')
+
+ani_mo = animate(mo,fps=1,height = 375, width = 600)
+ani_mo
+```
+
+### Over time, tornado occurrence appears to increase. The number hits its top in 2004, and starts going down
+
+
+```{r}
+#Plot a line graph showing tornado numbers over year
+#Regression line included
+df_yr = count(df,yr)
+yr = df_yr %>% ggplot(aes(x = yr, y = n)) +
+  geom_line(color = 'steelblue',size=0.75) +
+  geom_point(size = 1) +
+  labs(x = 'year', y = 'number of tornadoes', title = 'Number of Tornadoes in each Year 1950-2018') +
+  geom_smooth(se=F, color = 'darkgreen') +
+  annotate('text',
+           x = df_yr[which(df_yr$n == max(df_yr$n)),'yr'],
+           y = df_yr[which(df_yr$n == max(df_yr$n)),'n'] + 100,
+           label = paste('max value at year',df_yr[which(df_yr$n == max(df_yr$n)),'yr'],':',df_yr[which(df_yr$n == max(df_yr$n)),'n'])) + 
+  theme_minimal()
+
+yr
+```
+
+### Most of the tornadoes are not very large, as points cluster in the bottom left corner. The magnitudes are mostly smaller than 3
+
+
+```{r}
+#Plot a scatter plot showing tornado size distributions
+#Color indicates tornado magnitude, with 5 as maximum, -9 as unknown
+mag = df %>% 
+  select(mag,len,wid) %>%
+  ggplot(aes(x = wid,y=len)) +
+  geom_point(aes(color = as.factor(mag))) + 
+  scale_color_manual(name='F-scale',
+                     values = c('5'='red',
+                                '4'='orange',
+                                '3'='blue',
+                                '2'='yellow',
+                                '1'='darkgreen',
+                                '0'='lightgreen',
+                                '-9'='black'),
+                     labels = c(-9,0,1,2,3,4,5)) +
+  labs(title='All Tornadoes magnitude',x='width (in yards)',y='length (in miles)') +
+  theme_minimal()
+  
+mag
+```
+
+
+
+
+
+
+

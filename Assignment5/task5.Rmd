@@ -1,0 +1,29 @@
+---
+title: "ANLY503 HW5 Wenhao Jiang"
+author: "Wenhao Jiang"
+date: "2020/10/23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+trc = read.csv('data/transactions.csv')
+acc = read.csv('data/accounts_analytical.csv')
+```
+
+# Account transcations
+```{r,warning=F}
+no_cred_id = acc[is.na(acc$credit_cards),]$account_id
+trc2 = trc[trc$account_id==no_cred_id,]
+trc2[trc2$type=='credit',]
+```
+
+There are 80 transactions where accounts has no credit cards
+
+

@@ -1,0 +1,74 @@
+---
+title: "ANLY503 HW5 Wenhao Jiang"
+author: "Wenhao Jiang"
+date: "2020/10/23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning=F,message=F)
+library(reticulate)
+use_condaenv('r-reticulate',required = T)
+```
+
+```{r}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+trc = read.csv('data/transactions.csv')
+acc = read.csv('data/accounts_analytical.csv')
+```
+# Loan amount histogram
+```{r}
+acc %>%
+  ggplot(aes(x=loan_amount)) +
+  geom_histogram()
+```
+# Loan Distribution with status
+```{r}
+acc %>% subset(!is.na(loan_default)) %>%
+  ggplot(aes(x=loan_amount, y=loan_status, color=loan_default)) +
+  geom_point() +
+  facet_grid(~loan_default)
+```
+
+# Loan Distribution if default
+```{r}
+acc %>% subset(!is.na(loan_default)) %>%
+  ggplot(aes(x=loan_amount, y=loan_payment, color=loan_term)) +
+  geom_point() +
+  facet_grid(~loan_default)
+```
+
+1. Loan amount and loan payment with different terms has their own patterns - following one line per term
+2. Normally, loan with high amount would not have low payment. However, default loans would have relatively lower payment compared to non-default loans
+3. Loan amount distribution is right skewed
+
+
+# Python representation
+```{r, include=F}
+py_install('matplotlib')
+py_install('seaborn')
+py_install('pandas')
+```
+
+```{python}
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+
+df = pd.read_csv('data/accounts_analytical.csv')
+sns.relplot(data=df,x='loan_amount',y='loan_payment',col='loan_default',hue='loan_term')
+plt.show()
+```
+
+
+
+
+
+
+
+

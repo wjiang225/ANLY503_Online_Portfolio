@@ -1,0 +1,66 @@
+---
+title: "ANLY503 HW5 Wenhao Jiang"
+author: "Wenhao Jiang"
+date: "2020/10/20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+trc = read.csv('data/transactions.csv')
+acc = read.csv('data/accounts_analytical.csv')
+```
+
+# Whether an account has a credit card or not
+```{r}
+acc %>%
+  ggplot(aes(x=is.na(credit_cards))) +
+  geom_bar() +
+  labs(x = 'Acount with credit card or not') +
+  scale_x_discrete(labels = c('Yes','No')) +
+  geom_text(stat='count',aes(label =..count..), vjust=-0.2)
+```
+
+# Whether an account has a loan or not
+```{r}
+acc %>%
+  ggplot(aes(x=is.na(loan_amount))) +
+  geom_bar() +
+  labs(x = 'Acount has loan or not') +
+  scale_x_discrete(labels = c('Yes','No')) +
+  geom_text(stat='count',aes(label =..count..), vjust=-0.2)
+```
+
+# The average balance for accounts with and without credit card
+```{r}
+acc %>%
+  ggplot(aes(x=(max_balance+min_balance)*0.5,y=is.na(credit_cards))) +
+  geom_violin() +
+  labs(x='average account balance', y='account has credit card or not') +
+  scale_y_discrete(labels = c('Yes','No'))
+```
+
+# The average balance for accounts with and without loan
+```{r}
+acc %>%
+  ggplot(aes(x=(max_balance+min_balance)*0.5,y=is.na(loan_amount))) +
+  geom_violin() +
+  labs(x='average account balance', y='account has loan or not') +
+  scale_y_discrete(labels = c('Yes','No'))
+```
+
+
+
+
+
+
+
